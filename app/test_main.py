@@ -8,17 +8,17 @@ import pytest
 client = TestClient(app)
 
 TEST_PATIENT_LIST = [
-    (1, 'Pan', 'Demia'),
-    (2, 'Anna', 'Kwarant'),
-    (3, 'Błękit', 'Żółtko')
+    (0, 'Pan', 'Demia'),
+    (1, 'Anna', 'Kwarant'),
+    (2, 'Błękit', 'Żółtko')
 ]
 
 class MockPatientResponse:
     @staticmethod
     def patient_json(pk):
         return {
-            'name': TEST_PATIENT_LIST[pk-1][1],
-            'surename': TEST_PATIENT_LIST[pk-1][2]
+            'name': TEST_PATIENT_LIST[pk][1],
+            'surename': TEST_PATIENT_LIST[pk][2]
         }
 
 
@@ -52,10 +52,10 @@ class TestMethodEndpoint:
 
 
 class TestGetPatient:
-    @pytest.mark.parametrize("pk", [-5, 0, 1, 2, 3])
+    @pytest.mark.parametrize("pk", [-5, 0, 1, 2])
     def test_get_patient(self, pk):
         response = client.get(f'/patient/{pk}')
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         assert response.json() == {'message': f'Nie znaleziono pacjenta o indeksie {pk}'}
 
 
@@ -68,7 +68,7 @@ class TestPostAndGetPatient:
         assert response.json() == {"id": id, "patient": post_json}
 
 
-    @pytest.mark.parametrize("pk", [1, 2, 3])
+    @pytest.mark.parametrize("pk", [0, 1, 2])
     def test_get_patient(self, pk):
         response = client.get(f'/patient/{pk}')
         assert response.status_code == status.HTTP_200_OK

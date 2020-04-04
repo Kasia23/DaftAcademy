@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 app = FastAPI()
-app.counter = 0
+app.counter = -1
 
 PATIENT_DICT = {}
 
@@ -44,6 +44,6 @@ def patient(request: PatientRq):
 def get_patient(pk: int, response: Response):
     patient = PATIENT_DICT.get(pk)
     if not patient:
-        response.status_code = status.HTTP_404_NOT_FOUND
+        response.status_code = status.HTTP_204_NO_CONTENT
         patient = {'message': f'Nie znaleziono pacjenta o indeksie {pk}'}
     return patient
