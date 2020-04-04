@@ -73,3 +73,4 @@ class TestPostAndGetPatient:
         response = client.get(f'/patient/{pk}')
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == MockPatientResponse.patient_json(pk)
+	
