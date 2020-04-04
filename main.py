@@ -7,8 +7,7 @@ from pydantic import BaseModel
 
 app = FastAPI()
 app.counter = -1
-
-PATIENT_DICT = {}
+app.patient_dict = {}
 
 
 @app.get('/')
@@ -29,21 +28,21 @@ class PatientRq(BaseModel):
 
 class PatientResp(BaseModel):
     id: int
-    patient: Dict
+    patient: PatientRq
 
 
 @app.post("/patient", response_model=PatientResp)
-def patient(request: PatientRq):
+def patient(rq: PatientRq):
     'indeksy pacjentów w bazie nadawane są od numeru 0'
     app.counter += 1
-    PATIENT_DICT[app.counter] = request.dict()
-    return PatientResp(id=app.counter, patient=request.dict())
+    app.patient_dict[app.counter] = rq
+    return PatientResp(id=app.counter, patient=rq)
 
 
 @app.get('/patient/{pk}')
 def get_patient(pk: int, response: Response):
-    patient = PATIENT_DICT.get(pk)
+    patient = app.patient_dict.get(pk)
     if not patient:
         response.status_code = status.HTTP_204_NO_CONTENT
-        patient = {'message': f'Nie znaleziono pacjenta o indeksie {pk}'}
+        return {'message': f'Nie znaleziono pacjenta o indeksie {pk}'}
     return patient
