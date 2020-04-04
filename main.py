@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 app = FastAPI()
-app.counter = 0
+app.counter = -1
 
 PATIENT_DICT = {}
 
@@ -34,7 +34,7 @@ class PatientResp(BaseModel):
 
 @app.post("/patient", response_model=PatientResp)
 def patient(request: PatientRq):
-    'indeksy pacjentów w bazie nadawane są od numeru 1'
+    'indeksy pacjentów w bazie nadawane są od numeru 0'
     app.counter += 1
     PATIENT_DICT[app.counter] = request.dict()
     return PatientResp(id=app.counter, patient=request.dict())
