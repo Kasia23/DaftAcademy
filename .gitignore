@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# dict
+daftacademy-python_levelup-spring2020/*
+
