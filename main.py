@@ -1,12 +1,15 @@
 from typing import Dict
+import secrets
 
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, Request, Response, status, Cookie, Depends, HTTPException
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from pydantic import BaseModel
 
 app = FastAPI()
 app.counter = -1
 app.patient_dict = {}
+security = HTTPBasic()
 
 
 @app.get('/')
@@ -17,6 +20,24 @@ def hello_world():
 @app.get('/welcome')
 def welcome():
     return {'message': 'Welcome during the coronavirus pandemic!'}
+
+
+def create_cookie():
+    session_token = 'token'
+    response.set_cookie(key="session_token", value=session_token)
+
+
+@app.post("/login")
+def login_and_basic_auth(response: Response, credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, "trudnY")
+    correct_password = secrets.compare_digest(credentials.password, "PaC13Nt")
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return welcome()
 
 
 @app.api_route('/method', methods=['get', 'post', 'delete', 'put'])
