@@ -12,8 +12,7 @@ app.patient_dict = {}
 security = HTTPBasic()
 
 app.secret_key = 'secret34222hahahAKakkaLSLSOPJDOJFFFF!123#B?P'  # 64 characters 'secret' key
-user = {'login': 'trudnY', 'password': 'PaC13Nt'}
-
+app.user = {'login': 'trudnY', 'password': 'PaC13Nt'}
 
 @app.get('/')
 def hello_world():
@@ -27,8 +26,8 @@ def welcome():
 
 @app.post("/login")
 def login_and_basic_auth(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(credentials.username, user['login'])
-    correct_password = secrets.compare_digest(credentials.password, user['password'])
+    correct_username = secrets.compare_digest(credentials.username, app.user['login'])
+    correct_password = secrets.compare_digest(credentials.password, app.user['password'])
     if not (correct_username and correct_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
