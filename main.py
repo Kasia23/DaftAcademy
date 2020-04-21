@@ -8,7 +8,6 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from hashlib import sha256
 
-
 app = FastAPI()
 app.counter = -1
 app.patient_dict = {}
@@ -16,6 +15,7 @@ security = HTTPBasic()
 
 app.secret_key = 'secret34222hahahAKakkaLSLSOPJDOJFFFF!123#B?P'  # 64 characters 'secret' key
 app.user = {'login': 'trudnY', 'password': 'PaC13Nt'}
+
 
 @app.get('/')
 def hello_world():
@@ -28,22 +28,28 @@ def welcome():
 
 
 @app.post("/login")
-def login_and_basic_auth(credentials: HTTPBasicCredentials = Depends(security)):
+def login(credentials: HTTPBasicCredentials = Depends(security)):
     correct_username = secrets.compare_digest(credentials.username, app.user['login'])
     correct_password = secrets.compare_digest(credentials.password, app.user['password'])
+
     if not (correct_username and correct_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    session_token = sha256(str.encode(f"{credentials.username}{credentials.password}{app.secret_key}")).hexdigest()
 
+    session_token = sha256(str.encode(f"{credentials.username}{credentials.password}{app.secret_key}")).hexdigest()
     response = RedirectResponse(url='/welcome', status_code=302)
     response.set_cookie(key="session_token", value=session_token)
 
-    session = {'user': credentials.username, 'token': session_token}
+    return response
 
+
+@app.get("/logout")
+async def route_logout_and_remove_cookie():
+    response = RedirectResponse(url="/")
+    response.delete_cookie("session_token")
     return response
 
 
@@ -63,12 +69,14 @@ class PatientResp(BaseModel):
 
 
 @app.post("/patient", response_model=PatientResp)
-def patient(rq: PatientRq):
+def patient(rq: PatientRq, session_token: str = Cookie(None)):
     'indeksy pacjentów w bazie nadawane są od numeru 0'
     app.counter += 1
     app.patient_dict[app.counter] = rq
     return PatientResp(id=app.counter, patient=rq)
 
+#     if !request.cookies.get("session_token"):
+#         raise HTTPException(status_code=403, detail="Unathorised")
 
 @app.get('/patient/{pk}')
 def get_patient(pk: int, response: Response):
