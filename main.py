@@ -11,6 +11,9 @@ app.counter = -1
 app.patient_dict = {}
 security = HTTPBasic()
 
+app.secret_key = 'secret34222hahahAKakkaLSLSOPJDOJFFFF!123#B?P'  # 64 characters 'secret' key
+user = {'login': 'trudnY', 'password': 'PaC13Nt'}
+
 
 @app.get('/')
 def hello_world():
@@ -22,23 +25,24 @@ def welcome():
     return {'message': 'Welcome during the coronavirus pandemic!'}
 
 
-def create_cookie():
-    session_token = 'token'
-    response.set_cookie(key="session_token", value=session_token)
-
-
 @app.post("/login")
-def login_and_basic_auth(response: Response, credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(credentials.username, "trudnY")
-    correct_password = secrets.compare_digest(credentials.password, "PaC13Nt")
+def login_and_basic_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, user['login'])
+    correct_password = secrets.compare_digest(credentials.password, user['password'])
     if not (correct_username and correct_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    response.status_code = 301
-    return welcome()
+    session_token = sha256(str.encode(f"{credentials.username}{credentials.password}{app.secret_key}")).hexdigest()
+
+    response = RedirectResponse(url='/welcome', status_code=302)
+    response.set_cookie(key="session_token", value=session_token)
+
+    session = {'user': credentials.username, 'token': session_token}
+
+    return response
 
 
 @app.api_route('/method', methods=['get', 'post', 'delete', 'put'])
