@@ -3,8 +3,11 @@ import secrets
 
 from fastapi import FastAPI, Request, Response, status, Cookie, Depends, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.responses import RedirectResponse
 
 from pydantic import BaseModel
+from hashlib import sha256
+
 
 app = FastAPI()
 app.counter = -1
