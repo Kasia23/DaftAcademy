@@ -37,6 +37,7 @@ def login_and_basic_auth(response: Response, credentials: HTTPBasicCredentials =
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Basic"},
         )
+    response.status_code = 301
     return welcome()
 
 
