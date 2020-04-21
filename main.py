@@ -4,7 +4,6 @@ from fastapi import FastAPI, Request, Response, status
 
 from pydantic import BaseModel
 
-
 app = FastAPI()
 app.counter = -1
 app.patient_dict = {}
@@ -15,13 +14,18 @@ def hello_world():
     return {'message': 'Hello World during the coronavirus pandemic!'}
 
 
+@app.get('/welcome')
+def welcome():
+    return {'message': 'Welcome during the coronavirus pandemic!'}
+
+
 @app.api_route('/method', methods=['get', 'post', 'delete', 'put'])
 def return_method(request: Request):
     return {'method': request.method}
 
 
 class PatientRq(BaseModel):
-    name: str 
+    name: str
     surename: str
 
 
