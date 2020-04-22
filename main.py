@@ -4,6 +4,7 @@ import secrets
 from fastapi import FastAPI, Request, Response, status, Cookie, Depends, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 from pydantic import BaseModel
 from hashlib import sha256
@@ -12,6 +13,7 @@ from functools import wraps
 
 app = FastAPI()
 security = HTTPBasic()
+templates = Jinja2Templates(directory="templates")
 
 app.counter = -1
 app.patient_dict = {}
@@ -37,7 +39,7 @@ def hello_world():
 @app.get('/welcome')
 @token_required
 def welcome(request: Request):
-    return {'message': 'Welcome!'}
+    return templates.TemplateResponse('welcome.html', {'request': request, 'user': user['login']})
 
 
 @app.post("/login")
