@@ -24,7 +24,7 @@ def token_required(func):
     @wraps(func)
     def wrapper(request: Request, *args, **kwargs):
         if not request.cookies.get('session_token'):
-            return RedirectResponse(url='/', status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+            return RedirectResponse(url='/', status_code=status.HTTP_401_UNAUTHORIZED)
         return func(request, *args, **kwargs)
     return wrapper
 
@@ -59,8 +59,7 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
 
 
 @app.get("/logout")
-@token_required
-def logout(request: Request):
+def logout():
     response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     response.delete_cookie("session_token")
     return response
