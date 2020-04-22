@@ -8,13 +8,25 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from hashlib import sha256
 
+from functools import wraps
+
 app = FastAPI()
-app.counter = -1
-app.patient_dict = {}
 security = HTTPBasic()
 
+app.counter = -1
+app.patient_dict = {}
+app.sesions = {}
 app.secret_key = 'secret34222hahahAKakkaLSLSOPJDOJFFFF!123#B?P'  # 64 characters 'secret' key
 app.user = {'login': 'trudnY', 'password': 'PaC13Nt'}
+
+
+def token_required(func):
+    @wraps(func)
+    def wrapper(request: Request, *args, **kwargs):
+        if not request.cookies.get('session_token'):
+            return RedirectResponse(url='/', status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+        return func(request, *args, **kwargs)
+    return wrapper
 
 
 @app.get('/')
@@ -23,8 +35,9 @@ def hello_world():
 
 
 @app.get('/welcome')
-def welcome():
-    return {'message': 'Welcome during the coronavirus pandemic!'}
+@token_required
+def welcome(request: Request):
+    return {'message': 'Welcome!'}
 
 
 @app.post("/login")
@@ -40,15 +53,15 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
         )
 
     session_token = sha256(str.encode(f"{credentials.username}{credentials.password}{app.secret_key}")).hexdigest()
-    response = RedirectResponse(url='/welcome', status_code=302)
+    response = RedirectResponse(url='/welcome', status_code=status.HTTP_302_FOUND)
     response.set_cookie(key="session_token", value=session_token)
-
     return response
 
 
 @app.get("/logout")
-async def route_logout_and_remove_cookie():
-    response = RedirectResponse(url="/")
+@token_required
+def logout(request: Request):
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     response.delete_cookie("session_token")
     return response
 
@@ -69,17 +82,17 @@ class PatientResp(BaseModel):
 
 
 @app.post("/patient", response_model=PatientResp)
-def patient(rq: PatientRq, session_token: str = Cookie(None)):
+@token_required
+def patient(request: Request, rq: PatientRq):
     'indeksy pacjentów w bazie nadawane są od numeru 0'
     app.counter += 1
     app.patient_dict[app.counter] = rq
     return PatientResp(id=app.counter, patient=rq)
 
-#     if !request.cookies.get("session_token"):
-#         raise HTTPException(status_code=403, detail="Unathorised")
 
 @app.get('/patient/{pk}')
-def get_patient(pk: int, response: Response):
+@token_required
+def get_patient(request: Request, pk: int, response: Response):
     patient = app.patient_dict.get(pk)
     if not patient:
         response.status_code = status.HTTP_204_NO_CONTENT
