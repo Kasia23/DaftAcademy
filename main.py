@@ -39,7 +39,7 @@ def hello_world():
 @app.get('/welcome')
 @token_required
 def welcome(request: Request):
-    return templates.TemplateResponse('welcome.html', {'request': request, 'user': user['login']})
+    return templates.TemplateResponse('welcome.html', {'request': request, 'user': app.user['login']})
 
 
 @app.post("/login")
@@ -63,10 +63,7 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
 @app.get("/logout")
 @token_required
 def logout(request: Request):
-    #response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    response = Response()
-    response.status_code = status.HTTP_302_FOUND
-    response.headers["Location"] = "/"
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     response.delete_cookie("session_token")
     return response
 
