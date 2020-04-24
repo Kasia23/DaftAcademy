@@ -62,8 +62,8 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
 
 @app.get("/logout") #@token_required
 def logout(request: Request):
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     response.delete_cookie("session_token")
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     return response
 
 
