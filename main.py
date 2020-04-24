@@ -26,7 +26,8 @@ def token_required(func):
     @wraps(func)
     def wrapper(request: Request, *args, **kwargs):
         if not request.cookies.get('session_token'):
-            return RedirectResponse(url='/', status_code=status.HTTP_302_FOUND)
+            response.headers["Location"] = "/"
+            response.status_code=status.HTTP_302_FOUND
         return func(request, *args, **kwargs)
     return wrapper
 
@@ -60,10 +61,12 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
     return response
 
 
-@app.get("/logout") #@token_required
+@app.get("/logout")
+@token_required
 def logout(request: Request):
     response.delete_cookie("session_token")
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response.headers["Location"] = "/"
+    response.status_code=status.HTTP_302_FOUND
     return response
 
 
@@ -105,7 +108,6 @@ def get_patient(request: Request, pk: int, response: Response):
     patient = app.patient_dict.get(pk)
     if not patient:
         response.status_code = status.HTTP_204_NO_CONTENT
-        return {'message': f'Nie znaleziono pacjenta o indeksie {pk}'}
     return patient
 
 
