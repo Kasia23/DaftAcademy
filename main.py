@@ -26,9 +26,7 @@ def token_required(func):
     @wraps(func)
     def wrapper(request: Request, *args, **kwargs):
         if not request.cookies.get('session_token'):
-            response = Response()
-            response.headers["Location"] = "/"
-            response.status_code=status.HTTP_302_FOUND
+            return RedirectResponse(url='/', status_code=status.HTTP_401_UNAUTHORIZED)
         return func(request, *args, **kwargs)
     return wrapper
 
