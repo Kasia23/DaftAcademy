@@ -15,63 +15,69 @@ app = FastAPI()
 security = HTTPBasic()
 templates = Jinja2Templates(directory="templates")
 
-app.counter = -1
-app.patient_dict = {}
+app.next_patient_id = 0
+app.patients = {}
 app.sesions = {}
 app.secret_key = 'secret34222hahahAKakkaLSLSOPJDOJFFFF!123#B?P'  # 64 characters 'secret' key
-app.user = {'login': 'trudnY', 'password': 'PaC13Nt'}
+app.users = {"trudnY": "PaC13Nt"}
+
+MESSAGE_UNAUTHORIZED = "Log in to access this page."
 
 
-def token_required(func):
-    @wraps(func)
-    def wrapper(request: Request, *args, **kwargs):
-        if not request.cookies.get('session_token'):
-            return RedirectResponse(url='/', status_code=status.HTTP_401_UNAUTHORIZED)
-        return func(request, *args, **kwargs)
-    return wrapper
+@app.get("/")
+def root():
+    return {"message": "Hello World during the coronavirus pandemic!"}
 
 
-@app.get('/')
-def hello_world():
-    return {'message': 'Hello World during the coronavirus pandemic!'}
+def check_cookie(session_token: str = Cookie(None)):
+    if session_token not in app.sessions:
+        session_token = None
+    return session_token
 
 
-@app.get('/welcome')
-@token_required
-def welcome(request: Request):
-    return templates.TemplateResponse('welcome.html', {'request': request, 'user': app.user['login']})
+@app.get("/welcome")
+def welcome(request: Request, response: Response, session_token: str = Depends(check_cookie)):
+    if session_token is None:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return MESSAGE_UNAUTHORIZED
+    username = app.sessions[session_token]
+    return templates.TemplateResponse("welcome.html", {"request": request, "user": username})
+
+
+def login_check_cred(credentials: HTTPBasicCredentials = Depends(security)):
+    correct = False
+    for username, password in app.users.items():
+        correct_username = secrets.compare_digest(credentials.username, username)
+        correct_password = secrets.compare_digest(credentials.password, password)
+        if (correct_username and correct_password):
+            correct = True
+    if not correct:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect login or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    session_token = sha256(
+        bytes(f"{credentials.username}{credentials.password}{app.secret_key}", encoding='utf8')).hexdigest()
+    app.sessions[session_token] = credentials.username
+    return session_token
 
 
 @app.post("/login")
-def login(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(credentials.username, app.user['login'])
-    correct_password = secrets.compare_digest(credentials.password, app.user['password'])
-
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-
-    session_token = sha256(str.encode(f"{credentials.username}{credentials.password}{app.secret_key}")).hexdigest()
-    response = RedirectResponse(url='/welcome', status_code=status.HTTP_302_FOUND)
+def login(response: Response, session_token: str = Depends(login_check_cred)):
+    response.status_code = status.HTTP_302_FOUND
+    response.headers["Location"] = "/welcome"
     response.set_cookie(key="session_token", value=session_token)
-    return response
 
 
 @app.post("/logout")
-@token_required
-def logout(request: Request):
-    response.delete_cookie("session_token")
+def logout(response: Response, session_token: str = Depends(check_cookie)):
+    if session_token is None:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return MESSAGE_UNAUTHORIZED
+    response.status_code = status.HTTP_302_FOUND
     response.headers["Location"] = "/"
-    response.status_code=status.HTTP_302_FOUND
-    return response
-
-
-@app.api_route('/method', methods=['get', 'post', 'delete', 'put'])
-def return_method(request: Request):
-    return {'method': request.method}
+    app.sessions.pop(session_token)
 
 
 class PatientRq(BaseModel):
@@ -79,40 +85,42 @@ class PatientRq(BaseModel):
     surname: str
 
 
-class PatientResp(BaseModel):
-    id: int
-    patient: PatientRq
-
-
-@app.post("/patient", response_model=PatientResp)
-@token_required
-def patient(request: Request, rq: PatientRq, response: Response):
-    'indeksy pacjentów w bazie nadawane są od numeru 0'
-    app.counter += 1
-    app.patient_dict[app.counter] = rq
+@app.post("/patient")
+def add_patient(response: Response, rq: PatientRq, session_token: str = Depends(check_cookie)):
+    if session_token is None:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return MESSAGE_UNAUTHORIZED
+    pid = f"id_{app.next_patient_id}"
+    app.patients[pid] = rq.dict()
     response.status_code = status.HTTP_302_FOUND
-    response.headers["Location"] = f"/patient/{app.counter}"
-    return PatientResp(id=app.counter, patient=rq)
+    response.headers["Location"] = f"/patient/{pid}"
+    app.next_patient_id += 1
 
 
 @app.get("/patient")
-@token_required
-def patient(request: Request):
-    return app.patient_dict
+def get_all_patients(response: Response, session_token: str = Depends(check_cookie)):
+    if session_token is None:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return MESSAGE_UNAUTHORIZED
+    if len(app.patients) != 0:
+        return app.patients
+    response.status_code = status.HTTP_204_NO_CONTENT
 
 
-@app.get('/patient/{pk}')
-@token_required
-def get_patient(request: Request, pk: int, response: Response):
-    patient = app.patient_dict.get(pk)
-    if not patient:
-        response.status_code = status.HTTP_204_NO_CONTENT
-    return patient
+@app.get("/patient/{pid}")
+def get_patient(pid: str, response: Response, session_token: str = Depends(check_cookie)):
+    if session_token is None:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return MESSAGE_UNAUTHORIZED
+    if pid in app.patients:
+        return app.patients[pid]
+    response.status_code = status.HTTP_204_NO_CONTENT
 
 
-@app.delete('/patient/{pk}')
-@token_required
-def get_patient(request: Request, pk: int):
-    response = Response()
-    app.patient_dict.pop(pk, None)
+@app.delete("/patient/{pid}")
+def remove_patient(pid: str, response: Response, session_token: str = Depends(check_cookie)):
+    if session_token is None:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return MESSAGE_UNAUTHORIZED
+    app.patients.pop(pid, None)
     response.status_code = status.HTTP_204_NO_CONTENT
