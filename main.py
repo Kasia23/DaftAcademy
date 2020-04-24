@@ -60,7 +60,7 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
     return response
 
 
-@app.get("/logout")
+@app.post("/logout")
 @token_required
 def logout(request: Request):
     response.delete_cookie("session_token")
