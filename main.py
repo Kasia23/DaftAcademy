@@ -17,7 +17,7 @@ templates = Jinja2Templates(directory="templates")
 
 app.counter = -1
 app.patient_dict = {}
-app.sesions = {}
+app.sessions = {}
 app.secret_key = 'secret34222hahahAKakkaLSLSOPJDOJFFFF!123#B?P'  # 64 characters 'secret' key
 app.user = {'login': 'trudnY', 'password': 'PaC13Nt'}
 
@@ -28,6 +28,7 @@ def token_required(func):
         if not request.cookies.get('session_token'):
             return RedirectResponse(url='/', status_code=status.HTTP_401_UNAUTHORIZED)
         return func(request, *args, **kwargs)
+
     return wrapper
 
 
@@ -37,8 +38,7 @@ def hello_world():
 
 
 @app.get('/welcome')
-@token_required
-def welcome(request: Request):
+def welcome(request: Request, session_token: str = Cookie(None)):
     return templates.TemplateResponse('welcome.html', {'request': request, 'user': app.user['login']})
 
 
@@ -55,17 +55,21 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
         )
 
     session_token = sha256(str.encode(f"{credentials.username}{credentials.password}{app.secret_key}")).hexdigest()
+    app.sessions.append(session_token)
     response = RedirectResponse(url='/welcome', status_code=status.HTTP_302_FOUND)
+
     response.set_cookie(key="session_token", value=session_token)
     return response
 
 
 @app.post("/logout")
-@token_required
-def logout(request: Request):
+def logout(request: Request, session_token: str = Cookie(None)):
+    if session_token not in app.sessions:
+        raise HTTPException(status_code=401, detail="Unathorised")
+    response = Response()
     response.delete_cookie("session_token")
     response.headers["Location"] = "/"
-    response.status_code=status.HTTP_302_FOUND
+    response.status_code = status.HTTP_302_FOUND
     return response
 
 
@@ -85,9 +89,10 @@ class PatientResp(BaseModel):
 
 
 @app.post("/patient", response_model=PatientResp)
-@token_required
-def patient(request: Request, rq: PatientRq, response: Response):
+def patient(request: Request, rq: PatientRq, response: Response, session_token: str = Cookie(None)):
     'indeksy pacjentów w bazie nadawane są od numeru 0'
+    if session_token not in app.sessions:
+        raise HTTPException(status_code=401, detail="Unathorised")
     app.counter += 1
     app.patient_dict[app.counter] = rq
     response.status_code = status.HTTP_302_FOUND
@@ -96,14 +101,16 @@ def patient(request: Request, rq: PatientRq, response: Response):
 
 
 @app.get("/patient")
-@token_required
-def patient(request: Request):
+def patient(request: Request, session_token: str = Cookie(None)):
+    if session_token not in app.sessions:
+        raise HTTPException(status_code=401, detail="Unathorised")
     return app.patient_dict
 
 
 @app.get('/patient/{pk}')
-@token_required
-def get_patient(request: Request, pk: int, response: Response):
+def get_patient(request: Request, pk: int, response: Response, session_token: str = Cookie(None)):
+    if session_token not in app.sessions:
+        raise HTTPException(status_code=401, detail="Unathorised")
     patient = app.patient_dict.get(pk)
     if not patient:
         response.status_code = status.HTTP_204_NO_CONTENT
@@ -111,8 +118,9 @@ def get_patient(request: Request, pk: int, response: Response):
 
 
 @app.delete('/patient/{pk}')
-@token_required
-def get_patient(request: Request, pk: int):
+def get_patient(request: Request, pk: int, session_token: str = Cookie(None)):
+    if session_token not in app.sessions:
+        raise HTTPException(status_code=401, detail="Unathorised")
     response = Response()
     app.patient_dict.pop(pk, None)
     response.status_code = status.HTTP_204_NO_CONTENT
