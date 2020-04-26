@@ -59,7 +59,6 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
     session_token = sha256(str.encode(f"{credentials.username}{credentials.password}{app.secret_key}")).hexdigest()
     app.sessions.append(session_token)
     response = RedirectResponse(url='/welcome', status_code=status.HTTP_302_FOUND)
-
     response.set_cookie(key="session_token", value=session_token)
     return response
 
@@ -126,3 +125,4 @@ def get_patient(pk: int, session_token: str = Cookie(None)):
     response = Response()
     app.patient_dict.pop(pk, None)
     response.status_code = status.HTTP_204_NO_CONTENT
+    return response
